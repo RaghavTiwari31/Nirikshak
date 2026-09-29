@@ -1,24 +1,9 @@
-# SAT-SA: Supervisory Analytics Tool for SOC Assessment
+# NIRIKSHAK (SAT-SA): Supervisory Analytics Tool for SOC Assessment
 
 SIH 2026 · NCIIPC problem statement. SAT-SA helps supervisors analyse SOC alert and
 case-management submissions from many Critical Sector Entities. It detects **execution gaps**
 and **negative space**, then prioritises entities and samples for manual review. Every finding
 comes with explainable, auditable evidence.
-
-## Documentation
-
-| Document | What it covers |
-|---|---|
-| [Architecture](docs/ARCHITECTURE.md) | Topology, data flow, analytics engine, **AI/ML disclosure**, security (2 pages) |
-| [Functional design](docs/FUNCTIONAL_DESIGN.md) | Roles, supervisory workflow, screens, requirement traceability |
-| [Analytics methodology](docs/ANALYTICS_METHODOLOGY.md) | Peer statistics, execution gaps, negative space, trends, unknown patterns, scoring |
-| [Signal library](docs/SIGNAL_LIBRARY.md) | All 22 signals with thresholds (generated from `signals.yaml`) |
-| [Data contract](docs/DATA_CONTRACT.md) | Data requirements: every dataset and field CSEs submit (generated) |
-| [Infrastructure](docs/INFRASTRUCTURE.md) | Hardware, measured performance and scaling, operations runbook |
-| [Validation](docs/VALIDATION.md) | Validation methodology and results |
-| [Pitch deck](docs/pitch/SAT-SA_pitch_deck.pdf) ([HTML source](docs/pitch/deck.html)) | 5-slide technical presentation |
-| [Demo script](docs/pitch/DEMO_SCRIPT.md) · [Judge Q&A](docs/pitch/JUDGE_QA.md) | 2-minute video shot list; 30 rehearsed questions |
-| [Implementation plan](docs/IMPLEMENTATION_PLAN.md) | Original problem analysis and build plan |
 
 ## Stack
 
