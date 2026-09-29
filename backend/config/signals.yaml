@@ -1,0 +1,505 @@
+# SAT-SA signal library.
+#
+# Every detector is configured here: what it measures, why a supervisor cares, how it
+# decides, and how its finding is worded. The SHA-256 of this file is stored on every
+# analysis run, so any finding can be traced to the exact thresholds that produced it.
+#
+# Decision rule: a signal fires when its ABSOLUTE rule is met AND (if peer_z_min is set)
+# the entity is an outlier against its peers by at least peer_z_min robust z-scores.
+# direction: "high" means a larger metric is worse; "low" means a smaller one is worse.
+# min_scale: floor for the peer spread, so near-identical peers cannot turn a trivial
+# difference into a large z-score.
+#
+# Narrative placeholders: {entity}, {value}, {peer_median}, {z}, {percentile}, {support}
+# plus the signal-specific keys listed under each signal.
+
+version: "1.1.0"
+timezone: Asia/Kolkata
+default_sla_hours: {critical: 4, high: 8, medium: 24, low: 72}
+
+# --------------------------------------------------------------------------- scoring
+# Each finding weighs  w = severity (1-4) x confidence (0-1).
+# Capability score (0-100, higher = healthier):   S_c = 100 * exp(-sum(w in c) / capability_k)
+# Supervisory Attention Index (0-100, higher = look first):
+#   SAI = 100 * (1 - exp(-sum_c(weight_c * sum(w in c)) / sai_k))
+# One high-confidence critical finding (w ~ 3.6) drops a capability to ~41 and lifts SAI to ~45.
+scoring:
+  capability_k: 4.0
+  sai_k: 8.0
+  capability_weights:
+    threat_detection: 1.2
+    escalation: 1.2
+    cyber_resilience: 1.2
+    incident_response: 1.1
+    investigation: 1.0
+    security_operations: 1.0
+    governance: 1.0
+    operational_discipline: 0.8
+
+# Review sample packs: which entities get one, how big, and how much is random control.
+review:
+  top_entities: 10  # always pack the top N by SAI ...
+  min_sai: 30  # ... plus any entity at or above this SAI
+  pack_size: 30
+  control_share: 0.2  # random records, so reviewers can estimate the tool's own hit rate
+
+# Anomaly model (AN-01): whole-window entity features that feed the Isolation Forest, and
+# the rule signals whose findings already "explain" an extreme value of each feature
+# (e.g. batch closing distorts every timing metric; a deteriorating SOC explains its own
+# slower closures). Explained features are neutralised before the model is fitted, so
+# AN-01 only ever reports behaviour that no existing finding accounts for.
+anomaly:
+  features:
+    alerts_per_asset: [NS-06, NS-01]
+    high_crit_share: []
+    median_ack_min: [EG-10, EG-08, EG-09, TR-01]
+    median_close_h: [EG-05, EG-08, EG-01, EG-09, TR-01]
+    median_close_h_high_crit: [EG-01, EG-05, EG-08, EG-09, TR-01]
+    tp_rate_high_crit: [EG-07, EG-06, EG-12]
+    unacknowledged_share: [EG-12]
+    cases_per_100_alerts: [NS-05, EG-06]
+    escalation_rate: [EG-02, NS-04, TR-01]
+    median_note_chars: [EG-03, EG-04, TR-01]
+    no_work_case_share: [EG-03, EG-04]
+    night_day_ack_ratio: [EG-10, EG-09]
+    top_analyst_share: [EG-09, EG-04]
+    escalation_weekday_peak: [EG-02, NS-04]
+    reopen_share: [EG-11]
+
+signals:
+  # ------------------------------------------------------------------ execution gaps
+  - id: EG-01
+    version: "1.0"
+    name: High-severity alerts closed unusually fast
+    family: execution_gap
+    capability: investigation
+    severity: 3
+    direction: high
+    peer_z_min: 3.0
+    min_support: 20
+    min_scale: 0.02
+    params: {max_minutes: 10, min_share: 0.08}
+    description: >-
+      Share of high and critical alerts closed within a few minutes of being raised.
+    rationale: >-
+      A meaningful investigation of a high-severity alert takes time. Many near-instant
+      closures suggest alerts are being cleared to hit response metrics, not investigated.
+    narrative: >-
+      {count} of {support} high/critical alerts ({value:.0%}) were closed within
+      {max_minutes} minutes of being raised. The peer median is {peer_median:.1%}.
+
+  - id: EG-02
+    version: "1.0"
+    name: Critical true positives closed without escalation
+    family: execution_gap
+    capability: escalation
+    severity: 4
+    direction: high
+    peer_z_min: 3.0
+    min_support: 5
+    min_scale: 0.05
+    params: {min_share: 0.3}
+    description: >-
+      Share of confirmed critical alerts whose case has no escalation record.
+    rationale: >-
+      Confirmed critical incidents should reach L2, management or CERT-In. Closing them
+      inside L1 hides serious incidents from those accountable for them.
+    narrative: >-
+      {count} of {support} confirmed critical alerts ({value:.0%}) were closed with no
+      escalation on record. Across peers the median is {peer_median:.0%}.
+
+  - id: EG-03
+    version: "1.0"
+    name: Cases closed without investigation steps
+    family: execution_gap
+    capability: investigation
+    severity: 3
+    direction: high
+    peer_z_min: 3.0
+    min_support: 30
+    min_scale: 0.03
+    params: {min_note_chars: 40, min_share: 0.15}
+    description: >-
+      Share of closed cases with no investigative activity (no comment or containment
+      step) or a closing note shorter than a sentence.
+    rationale: >-
+      Acknowledging and closing without recorded work is the classic "ticked, not
+      investigated" pattern.
+    narrative: >-
+      {count} of {support} closed cases ({value:.0%}) show no investigation steps or only
+      a token closing note. The peer median is {peer_median:.1%}.
+
+  - id: EG-04
+    version: "1.0"
+    name: Template-driven investigation notes
+    family: execution_gap
+    capability: operational_discipline
+    severity: 2
+    direction: high
+    peer_z_min: 3.0
+    min_support: 30
+    min_scale: 0.03
+    params: {similarity: 0.97, min_share: 0.2}
+    description: >-
+      Share of case notes that are near-identical (character n-gram cosine similarity)
+      to another note from the same entity.
+    rationale: >-
+      Copy-paste notes indicate boilerplate closure rather than case-specific analysis.
+    narrative: >-
+      {count} of {support} closing notes ({value:.0%}) are near-copies of other notes.
+      {top_analyst_share:.0%} of those come from the {top_analysts} analyst(s) who write
+      most of them. The peer median is {peer_median:.1%}.
+
+  - id: EG-05
+    version: "1.0"
+    name: Closures bunched just under the SLA deadline
+    family: execution_gap
+    capability: governance
+    severity: 3
+    direction: high
+    peer_z_min: 3.0
+    min_support: 100
+    params: {band: 0.15, min_ratio: 3.0, max_p: 0.001}
+    description: >-
+      Ratio of closures in the last 15% before the SLA deadline to closures in the first
+      15% after it, with a binomial test against a smooth distribution.
+    rationale: >-
+      Genuine work finishes at random times. A cliff at the deadline means the metric is
+      being managed, not the risk.
+    narrative: >-
+      {below} alerts closed in the 15% window just before their SLA deadline versus only
+      {above} just after it (ratio {value:.1f}, p = {p_value:.1e}). Peers show a median
+      ratio of {peer_median:.1f}.
+
+  - id: EG-06
+    version: "1.0"
+    name: Recurring incidents without remediation
+    family: execution_gap
+    capability: incident_response
+    severity: 3
+    direction: high
+    peer_z_min: 3.0
+    min_support: 1
+    params: {min_repeats: 4, min_unremediated: 0.5, min_clusters: 3}
+    description: >-
+      Number of asset/rule pairs with repeated confirmed incidents whose cases record
+      neither a root cause nor a remediation.
+    rationale: >-
+      Closing the same incident again and again without fixing its cause means risk is
+      not being reduced.
+    narrative: >-
+      {value:.0f} assets keep raising the same confirmed incident ({repeats} occurrences
+      in total) with no root cause or remediation recorded. Peers median: {peer_median:.0f}.
+
+  - id: EG-07
+    version: "1.0"
+    name: High-severity true-positive rate far below peers
+    family: execution_gap
+    capability: threat_detection
+    severity: 2
+    direction: low
+    peer_z_min: 3.5
+    min_support: 50
+    min_scale: 0.03
+    params: {}
+    description: >-
+      Share of closed high/critical alerts confirmed as true positives.
+    rationale: >-
+      An unusually low confirmation rate can mean serious alerts are being dismissed as
+      false positives to reduce workload.
+    narrative: >-
+      Only {value:.1%} of {support} closed high/critical alerts were confirmed as true
+      positives, against a peer median of {peer_median:.1%}.
+
+  - id: EG-08
+    version: "1.0"
+    name: Declared performance not borne out by evidence
+    family: execution_gap
+    capability: governance
+    severity: 3
+    direction: high
+    peer_z_min: null
+    min_support: 50
+    params: {min_mttr_ratio: 1.6, max_night_ratio: 4.0}
+    description: >-
+      Declared posture (mean time to resolve, 24x7 monitoring) compared with what the
+      alert data shows.
+    rationale: >-
+      This is the core execution gap: governance documents claim one thing and
+      operational evidence shows another.
+    narrative: >-
+      {claims}
+
+  - id: EG-09
+    version: "1.0"
+    name: Alerts closed in bulk
+    family: execution_gap
+    capability: operational_discipline
+    severity: 3
+    direction: high
+    peer_z_min: 3.0
+    min_support: 50
+    min_scale: 0.01
+    params: {batch_size: 10, min_share: 0.05}
+    description: >-
+      Share of closed alerts that were closed in batches of 10+ by one analyst within
+      the same minute.
+    rationale: >-
+      Nobody can investigate ten alerts in a minute. Mass closure clears queues without
+      review.
+    narrative: >-
+      {count} alerts ({value:.0%} of closures) were closed in {batches} bursts of
+      {batch_size} or more within a single minute by the same analyst.
+
+  - id: EG-10
+    version: "1.0"
+    name: Off-hours alerts wait for the morning shift
+    family: execution_gap
+    capability: security_operations
+    severity: 3
+    direction: high
+    peer_z_min: null
+    min_support: 30
+    params: {min_ratio: 4.0, min_night_minutes: 60}
+    description: >-
+      For entities declaring 24x7 monitoring: median time to acknowledge alerts raised
+      between 22:00 and 06:00 versus those raised in business hours.
+    rationale: >-
+      A 24x7 claim is only real if night-time alerts are picked up at night.
+    narrative: >-
+      The entity declares 24x7 monitoring, yet alerts raised at night wait a median of
+      {night_minutes:.0f} minutes for acknowledgement versus {day_minutes:.0f} minutes by
+      day ({value:.0f}x slower).
+
+  - id: EG-11
+    version: "1.0"
+    name: Cases reopened unusually often
+    family: execution_gap
+    capability: investigation
+    severity: 2
+    direction: high
+    peer_z_min: 3.0
+    min_support: 50
+    min_scale: 0.01
+    params: {min_share: 0.08}
+    description: Share of cases reopened after closure.
+    rationale: Frequent reopening suggests premature closure.
+    narrative: >-
+      {count} of {support} cases ({value:.0%}) were reopened after closure. The peer
+      median is {peer_median:.1%}.
+
+  - id: EG-12
+    version: "1.0"
+    name: Security tool alerts never reviewed by a human
+    family: execution_gap
+    capability: security_operations
+    severity: 3
+    direction: high
+    peer_z_min: null
+    min_support: 50
+    params: {max_human_share: 0.05}
+    description: >-
+      Per source tool, share of its alerts that were acknowledged by an analyst.
+    rationale: >-
+      A deployed control whose alerts are auto-closed unseen provides no protection.
+    narrative: >-
+      {tools}: {count} alerts were closed without any analyst ever acknowledging them.
+
+  # ------------------------------------------------------------------ negative space
+  - id: NS-01
+    version: "1.0"
+    name: Critical assets generating no alerts
+    family: negative_space
+    capability: threat_detection
+    severity: 4
+    direction: high
+    peer_z_min: 3.0
+    min_support: 5
+    min_scale: 0.03
+    params: {min_expected: 8, alpha: 0.01, min_silent: 3}
+    description: >-
+      Critical assets (criticality 3-4) with far fewer alerts than similar assets at
+      peer entities (Poisson test against the peer rate, Benjamini-Hochberg corrected).
+    rationale: >-
+      A critical system that never alerts is usually not monitored, not a perfectly safe
+      system.
+    narrative: >-
+      {silent} of {support} critical assets raised no alerts although peers' similar
+      assets would be expected to raise {expected_median:.0f} each over the period.
+
+  - id: NS-02
+    version: "1.0"
+    name: Expected alert categories missing
+    family: negative_space
+    capability: threat_detection
+    severity: 3
+    direction: high
+    peer_z_min: null
+    min_support: 1
+    params: {min_expected: 20, alpha: 0.001}
+    description: >-
+      Asset-type x alert-category combinations that peers routinely see but this entity
+      never reports (expected-evidence model).
+    rationale: >-
+      Domain controllers that never produce authentication alerts, or OT networks that
+      never produce OT alerts, reveal detection content or log sources that are missing.
+    narrative: >-
+      {value:.0f} expected evidence type(s) are absent: {cells}.
+
+  - id: NS-03
+    version: "1.0"
+    name: Telemetry went silent
+    family: negative_space
+    capability: cyber_resilience
+    severity: 3
+    direction: high
+    peer_z_min: null
+    min_support: 1
+    params: {min_days: 7}
+    description: >-
+      Log sources on critical assets reporting zero events for a run of consecutive days.
+    rationale: >-
+      A silent log source is a monitoring blind spot for as long as it is silent.
+    narrative: >-
+      {sources} log source(s) on critical assets reported zero events for {value:.0f}
+      consecutive days or more (longest gap: {longest} days).
+
+  - id: NS-04
+    version: "1.0"
+    name: Serious incidents with no escalations
+    family: negative_space
+    capability: escalation
+    severity: 4
+    direction: low
+    peer_z_min: 3.0
+    min_support: 10
+    min_scale: 0.05
+    params: {max_share: 0.3}
+    description: >-
+      Share of confirmed high/critical cases that have any escalation record.
+    rationale: >-
+      Absence of escalation records where incidents clearly occurred means oversight and
+      external reporting are not happening.
+    narrative: >-
+      Only {count} of {support} confirmed high/critical cases ({value:.0%}) were escalated
+      at all. The peer median is {peer_median:.0%}.
+
+  - id: NS-05
+    version: "1.0"
+    name: Confirmed alerts without a case
+    family: negative_space
+    capability: investigation
+    severity: 2
+    direction: high
+    peer_z_min: 3.0
+    min_support: 20
+    min_scale: 0.02
+    params: {min_share: 0.1}
+    description: Share of confirmed medium+ alerts that have no case record.
+    rationale: A confirmed incident with no case has no investigation trail.
+    narrative: >-
+      {count} of {support} confirmed medium-or-higher alerts ({value:.0%}) have no
+      case record. The peer median is {peer_median:.1%}.
+
+  - id: NS-06
+    version: "1.0"
+    name: Unexpectedly low alert activity
+    family: negative_space
+    capability: security_operations
+    severity: 2
+    direction: low
+    peer_z_min: 3.0
+    min_support: 1
+    params: {}
+    description: Alerts per asset per month, on a log scale, compared with peers.
+    rationale: >-
+      Far less activity than comparable entities usually means less visibility, not less
+      threat.
+    narrative: >-
+      The entity raises {value:.2f} alerts per asset per month against a peer median of
+      {peer_median:.2f}.
+
+  - id: NS-07
+    version: "1.0"
+    name: OT environment with no OT monitoring
+    family: negative_space
+    capability: cyber_resilience
+    severity: 4
+    direction: high
+    peer_z_min: null
+    min_support: 3
+    params: {}
+    description: >-
+      OT assets in the inventory but no alerts from OT monitoring and no OT telemetry.
+    rationale: >-
+      Operational technology is the most consequential part of critical infrastructure;
+      an unmonitored OT estate is a major blind spot.
+    narrative: >-
+      The inventory lists {support} OT assets, but the period contains no OT-IDS alerts
+      and no OT telemetry at all.
+
+  - id: NS-08
+    version: "1.0"
+    name: Missing periodic submissions
+    family: negative_space
+    capability: governance
+    severity: 2
+    direction: high
+    peer_z_min: null
+    min_support: 1
+    params: {}
+    description: Months in the assessment window with no accepted submission.
+    rationale: >-
+      Gaps in submissions leave supervisors with no evidence for that period.
+    narrative: >-
+      No accepted submission was received for {value:.0f} month(s): {months}.
+
+  # ------------------------------------------------------------------ trends & anomalies
+  - id: TR-01
+    version: "1.0"
+    name: Sustained operational deterioration
+    family: trend
+    capability: security_operations
+    severity: 3
+    direction: high
+    peer_z_min: 3.0
+    min_support: 8
+    min_scale: 0.1
+    params: {baseline_months: 6, recent_months: 3, min_ratio: 1.5, min_metrics: 2}
+    description: >-
+      Recent months (median of the last 3) compared with the entity's own baseline (median
+      of the first 6) across closure time, acknowledgement time, escalation rate and note
+      depth. A CUSUM chart dates the onset.
+    rationale: >-
+      A point-in-time assessment can miss a SOC that is steadily getting worse. Catching the
+      decline early is cheaper than responding after the capability has failed.
+    narrative: >-
+      {metrics_text} Deterioration began around {onset}. The worst metric is {value:.1f}x
+      worse than the entity's own baseline; peers median {peer_median:.1f}x.
+
+  - id: AN-01
+    version: "1.0"
+    name: Unusual operating pattern not explained by known rules
+    family: anomaly
+    capability: operational_discipline
+    severity: 2
+    direction: high
+    # The isolation score is only a sanity gate (Isolation Forest compresses extremes at
+    # n~40); the strict condition is >= 2 unexplained features each >= 3 SD from peers.
+    peer_z_min: 2.0
+    min_support: 3
+    min_scale: 0.02
+    params: {n_estimators: 300, top_features: 3, feature_z_min: 3.0, min_unexplained: 2,
+             rel_scale_floor: 0.15, min_cohort: 8}
+    description: >-
+      Isolation Forest over operating features, standardised within comparable cohorts
+      (24x7 vs business-hours SOCs). Features already explained by an entity's rule-based
+      findings are neutralised first, so only unexplained behaviour can make it an outlier.
+    rationale: >-
+      Supervisors asked for "previously unknown indicators". This finds entities that behave
+      unlike their peers in ways no rule anticipates, and says which behaviours make them
+      unusual. It is a lead for examiner judgement, not a conclusion.
+    narrative: >-
+      This entity's operating pattern is unusual compared with peers (anomaly score
+      {value:.2f}, peers median {peer_median:.2f}) and no existing finding explains it.
+      Unusual because: {drivers}.

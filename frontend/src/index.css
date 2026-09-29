@@ -1,0 +1,145 @@
+@import 'tailwindcss';
+
+/*
+ * Nirikshak design tokens: warm off-white surfaces, deep charcoal ink, amber accent.
+ * One light theme, tuned for long reading sessions: soft contrast on surfaces, full
+ * contrast on text.
+ */
+@theme {
+  /* Inter everywhere. "font-mono" is kept as a utility name for codes and figures, but it
+     renders in Inter with tabular numerals rather than a second typeface. */
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-sev-low: var(--sev-low-ink);
+  --color-sev-medium: var(--sev-medium-ink);
+  --color-sev-high: var(--sev-high-ink);
+  --color-sev-critical: var(--sev-critical-ink);
+  --color-ok: var(--ok);
+  --color-health-good: var(--health-good);
+  --color-health-good-ink: var(--health-good-ink);
+
+  --shadow-card: 0 1px 2px rgb(31 35 40 / 0.04), 0 4px 16px -6px rgb(31 35 40 / 0.06);
+  --shadow-pop: 0 12px 32px -8px rgb(31 35 40 / 0.22), 0 2px 6px rgb(31 35 40 / 0.06);
+}
+
+:root {
+  /* Surfaces: warm off-white page, lighter cards, a tinted inset for wells and hovers. */
+  --bg: #f5f3ee;
+  --surface: #fdfcfa;
+  --surface-2: #f0ede6;
+  --line: #e6e1d7;
+  --line-strong: #d6cfc1;
+
+  /* Ink: deep charcoal for text, a softer charcoal for body copy, grey for secondary. */
+  --ink: #1f2328;
+  --ink-2: #3d434b;
+  --muted: #6a6f77; /* 4.9:1 on the card surface */
+
+  /* Amber: the UI accent (active navigation, focus, links, key highlights). It is not
+     used for data marks, so it never competes with severity colours in charts. */
+  --accent: #d98a06;
+  --accent-ink: #9a5a00; /* amber text: 5.3:1 on the card surface */
+  --accent-soft: rgb(217 138 6 / 0.12);
+
+  /* Status colours (validated as a set on #ffffff, all pairs: CVD ΔE >= 13.6, normal
+     vision >= 17.7). Mark tones fill dots and tints; the "-ink" tones are darker steps for
+     text. Status always ships with an icon and a word, never colour alone. */
+  --sev-low: #9a9690;
+  --sev-medium: #d6a114;
+  --sev-high: #d2521c;
+  --sev-critical: #951a32;
+  --sev-low-ink: #5f646c;
+  --sev-medium-ink: #825f00;
+  --sev-high-ink: #b0400f;
+  --sev-critical-ink: #951a32;
+  --ok: #1e7a3c;
+
+  /* Health scale for colour-coded values (capability scores, coverage, accuracy): good /
+     fair / poor / critical, validated as a set on the card surface (all pairs: CVD ΔE >= 13.6,
+     normal vision >= 17.7). Blue, not green, marks "good" so it never depends on red-green
+     vision. Every coded value also shows its number or word. */
+  --health-good: #2a78d6;
+  --health-fair: #d6a114;
+  --health-poor: #d2521c;
+  --health-bad: #951a32;
+  --health-good-ink: #1d5fb0;
+
+  /* Finding types (categorical, validated adjacent order: CVD ΔE >= 13.0). */
+  --fam-gap: #2a78d6;
+  --fam-missing: #e87ba4;
+  --fam-anomaly: #4a3aa7;
+  --fam-trend: #1baf7a;
+
+  /* Data-viz roles: "highlight one, grey the rest". The entity under discussion is deep
+     charcoal; peers are warm grey; the peer median is a mid-grey reference. Lightness,
+     not hue, carries the distinction, so it survives every form of colour blindness. */
+  --viz-entity: #1f2328;
+  --viz-series-2: #2a78d6; /* second and third focus series: validated all-pairs, >= 3:1 */
+  --viz-series-3: #4a3aa7;
+  --viz-context: #cdc7bb;
+  --viz-median: #7a7f87;
+  --viz-grid: #eeeae2;
+  --viz-axis: #d6cfc1;
+  --viz-seq-low: #f1eee8; /* sequential ramp (one slate hue): near the surface = near zero */
+  --viz-seq-high: #58677a;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv11', 'ss01'; /* Inter: single-storey a, open digits */
+}
+
+/* Tabular numerals wherever numbers are compared, and for codes (formerly monospace). */
+.num,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: rgb(217 138 6 / 0.22);
+}
+
+/* Quiet scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+@media print {
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+  }
+}

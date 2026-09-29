@@ -1,0 +1,89 @@
+# SAT-SA offline deployment (NCIIPC-controlled, air-gapped network).
+#
+#   cp .env.offline.example .env.offline      # then set real secrets
+#   docker compose -f docker-compose.offline.yml --env-file .env.offline up -d
+#   open http://localhost:8080
+#
+# Optional demo data (synthetic CSEs + an analysis run):
+#   docker compose -f docker-compose.offline.yml --env-file .env.offline --profile demo run --rm seed
+#
+# The database and API sit on an INTERNAL network with no route to the internet; only the
+# web container is published, and it makes no outbound requests. Nothing in the stack
+# calls a cloud service, SaaS API or externally hosted model.
+name: satsa-offline
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: satsa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.offline}
+      POSTGRES_DB: satsa
+    volumes:
+      - satsa-pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satsa -d satsa"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    image: satsa/api:${SATSA_VERSION:-0.1.0}
+    build: ./backend
+    environment: &api-env
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://satsa:${POSTGRES_PASSWORD}@db:5432/satsa
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env.offline}
+      PSEUDONYM_HMAC_KEY: ${PSEUDONYM_HMAC_KEY:?set PSEUDONYM_HMAC_KEY in .env.offline}
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      SATSA_CODE_VERSION: ${SATSA_VERSION:-0.1.0}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+    restart: unless-stopped
+
+  web:
+    image: satsa/web:${SATSA_VERSION:-0.1.0}
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [internal, edge]
+    restart: unless-stopped
+
+  # One-shot demo seeding: admin user, synthetic dataset, first analysis run.
+  seed:
+    image: satsa/api:${SATSA_VERSION:-0.1.0}
+    profiles: ["demo"]
+    environment:
+      <<: *api-env
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env.offline}
+      SEED_ENTITIES: ${SEED_ENTITIES:-40}
+      SEED_MONTHS: ${SEED_MONTHS:-12}
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        (python -m app.cli create-user --username admin --display-name Administrator
+        --role admin --password "$$ADMIN_PASSWORD" || true) &&
+        python -m app.cli synth --reset --entities "$$SEED_ENTITIES" --months "$$SEED_MONTHS"
+        --workers 2 &&
+        python -m app.cli analyze
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+
+networks:
+  internal:
+    internal: true  # no gateway: containers on this network cannot reach the internet
+  edge: {}  # only used to publish the web port to the host
+
+volumes:
+  satsa-pgdata:

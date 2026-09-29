@@ -1,0 +1,30 @@
+# Render Blueprint for the Nirikshak API (free tier). The database lives on Neon.
+services:
+  - type: web
+    name: nirikshak-api
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt -c constraints.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      # One BLAS/OpenMP thread: the free tier has 0.1 CPU, and per-thread buffers cost RAM.
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: DATABASE_URL # Neon pooled connection string (with ?sslmode=require)
+        sync: false
+      - key: CORS_ORIGINS # e.g. https://nirikshak.vercel.app
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PSEUDONYM_HMAC_KEY
+        generateValue: true
