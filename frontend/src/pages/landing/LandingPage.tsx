@@ -28,6 +28,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { getHealth } from '@/api/client'
 import { BrandMark } from '@/components/BrandMark'
+import { RadarField } from '@/components/effects/RadarField'
 import BlurText from '@/components/reactbits/BlurText'
 import CountUp from '@/components/reactbits/CountUp'
 import Magnet from '@/components/reactbits/Magnet'
@@ -406,8 +407,14 @@ export function LandingPage() {
         </Section>
 
         {/* ── Results (dark band) ──────────────────────────────────── */}
-        <section id="results" className="scroll-mt-20 bg-ink py-24 text-white sm:py-28">
-          <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        <section id="results" className="relative scroll-mt-20 overflow-hidden bg-ink py-24 text-white sm:py-28">
+          <RadarField
+            tone="dark"
+            origin={{ x: 0.88, y: 0.12 }}
+            spacing={72}
+            className="[mask-image:linear-gradient(to_bottom,black_30%,transparent_90%)]"
+          />
+          <div className="relative mx-auto max-w-7xl px-6 lg:px-10">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold tracking-[0.16em] text-accent uppercase">Results</p>
               <h2 className="mt-4 text-[clamp(2rem,4vw,3rem)] leading-tight font-semibold tracking-tight">
@@ -534,7 +541,12 @@ export function LandingPage() {
         <section className="px-6 pb-24 lg:px-10">
           <Reveal>
             <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-ink px-8 py-20 text-center text-white sm:px-16">
-              <Rings className="absolute top-1/2 left-1/2 size-[900px] -translate-x-1/2 -translate-y-1/2 text-accent opacity-60" />
+              <RadarField
+                tone="dark"
+                origin={{ x: 0.5, y: 0.5 }}
+                spacing={60}
+                className="[mask-image:radial-gradient(ellipse_at_center,black_25%,transparent_75%)]"
+              />
               <div className="relative">
                 <h2 className="mx-auto max-w-3xl text-[clamp(2rem,4.5vw,3.25rem)] leading-tight font-semibold tracking-tight">
                   Point your supervisors at the problems that matter.
@@ -847,34 +859,16 @@ function Faq() {
   )
 }
 
-/** Soft dot grid, a warm glow and slow orbit rings behind the hero. */
+/** The supervisory radar sweeping behind the hero, under a warm glow. */
 function HeroBackdrop() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-      <div className="bg-dot-grid absolute inset-0 [mask-image:radial-gradient(ellipse_70%_60%_at_50%_30%,black,transparent)]" />
-      <div className="absolute top-[-10%] left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(217_138_6/0.22),transparent)] blur-2xl" />
-      <Rings className="animate-orbit absolute top-[-380px] left-1/2 size-[1100px] -translate-x-1/2 text-accent opacity-50" />
+      <RadarField
+        tone="light"
+        origin={{ x: 0.5, y: 0.2 }}
+        className="[mask-image:radial-gradient(ellipse_75%_70%_at_50%_28%,black_35%,transparent)]"
+      />
+      <div className="animate-drift absolute top-[-10%] left-1/2 h-[520px] w-[900px] rounded-full bg-[radial-gradient(closest-side,rgb(217_138_6/0.2),transparent)] blur-2xl" />
     </div>
-  )
-}
-
-function Rings({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 1000 1000" fill="none" aria-hidden="true">
-      {[180, 280, 380, 480].map((r, i) => (
-        <circle
-          key={r}
-          cx="500"
-          cy="500"
-          r={r}
-          stroke="currentColor"
-          strokeOpacity={0.28 - i * 0.05}
-          strokeDasharray={i % 2 ? '5 9' : undefined}
-        />
-      ))}
-      <circle cx="500" cy="220" r="7" fill="currentColor" fillOpacity="0.55" />
-      <circle cx="820" cy="610" r="6" fill="currentColor" fillOpacity="0.4" />
-      <circle cx="240" cy="700" r="5" fill="currentColor" fillOpacity="0.35" />
-    </svg>
   )
 }

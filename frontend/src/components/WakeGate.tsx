@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { getHealth } from '@/api/client'
 import { BrandMark } from './BrandMark'
+import { RadarField } from './effects/RadarField'
 
 const RETRY_MS = 3000
 const ATTEMPT_TIMEOUT_MS = 10000
@@ -57,9 +58,16 @@ export function WakeGate({ children }: { children: ReactNode }) {
       ) : (
         <motion.div
           key="wake"
-          className="flex h-full flex-col items-center justify-center gap-8 px-4 text-center"
+          className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-4 text-center"
           exit={{ opacity: 0 }}
         >
+          <RadarField
+            tone="light"
+            origin={{ x: 0.5, y: 0.42 }}
+            period={6}
+            interactive={false}
+            className="[mask-image:radial-gradient(circle_at_50%_42%,black_15%,transparent_60%)]"
+          />
           <div className="relative flex h-40 w-40 items-center justify-center">
             {[0, 1, 2].map((i) => (
               <motion.span
@@ -72,7 +80,7 @@ export function WakeGate({ children }: { children: ReactNode }) {
             ))}
             <BrandMark size={56} />
           </div>
-          <div className="space-y-2">
+          <div className="relative space-y-2">
             <p className="text-lg font-semibold tracking-tight">Starting up…</p>
             <p className="text-sm text-muted">
               {degraded

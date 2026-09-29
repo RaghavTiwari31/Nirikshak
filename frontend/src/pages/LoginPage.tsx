@@ -4,6 +4,7 @@ import { type FormEvent, useState } from 'react'
 import { Navigate } from 'react-router'
 import { api } from '@/api/client'
 import { BrandMark } from '@/components/BrandMark'
+import { RadarField } from '@/components/effects/RadarField'
 import { Button, Field, inputClass } from '@/components/ui'
 import { type AuthUser, useAuth } from '@/store/auth'
 
@@ -77,6 +78,14 @@ export function LoginPage() {
       <div className="grid min-h-full lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
         {/* Brand panel */}
         <aside className="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col">
+          {/* The sweep turns about the centre of the corner rings, so they read as its range rings. */}
+          <RadarField
+            tone="dark"
+            origin={{ x: 1.05, y: 1.02 }}
+            spacing={62}
+            period={13}
+            className="[mask-image:radial-gradient(ellipse_120%_110%_at_100%_100%,black_30%,transparent_80%)]"
+          />
           <Rings />
           <div className="relative flex min-h-full flex-col px-14 py-12">
             <div className="flex items-center gap-3">

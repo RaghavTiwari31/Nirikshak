@@ -160,6 +160,14 @@ body {
 .animate-float { animation: float-y 6s ease-in-out infinite; }
 .animate-orbit { animation: orbit 90s linear infinite; }
 .animate-orbit-rev { animation: orbit 120s linear infinite reverse; }
+
+/* Slow drift for ambient amber glows (centred with translate, so no -translate-x class needed). */
+@keyframes drift {
+  0%, 100% { transform: translate(-50%, 0) scale(1); }
+  33% { transform: translate(-44%, 4%) scale(1.06); }
+  66% { transform: translate(-56%, -3%) scale(0.97); }
+}
+.animate-drift { animation: drift 22s ease-in-out infinite; }
 .marquee-pause:hover .animate-marquee { animation-play-state: paused; }
 
 /* Product tour autoplay: the bar under the active tab fills, then the next tab opens. */
@@ -178,6 +186,7 @@ body {
   .animate-marquee,
   .animate-float,
   .animate-orbit,
+  .animate-drift,
   .animate-orbit-rev {
     animation: none;
   }
