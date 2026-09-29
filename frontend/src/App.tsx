@@ -26,6 +26,7 @@ const IngestPage = page(() => import('@/pages/ingest/IngestPage'), 'IngestPage')
 const SignalLibraryPage = page(() => import('@/pages/signals/SignalLibraryPage'), 'SignalLibraryPage')
 const AuditRunsPage = page(() => import('@/pages/audit/AuditRunsPage'), 'AuditRunsPage')
 const BriefingPage = page(() => import('@/pages/briefing/BriefingPage'), 'BriefingPage')
+const LandingPage = page(() => import('@/pages/landing/LandingPage'), 'LandingPage')
 
 // Built pages; any other nav route shows its placeholder.
 const PAGES: Record<string, ComponentType> = {
@@ -41,6 +42,15 @@ const PAGES: Record<string, ComponentType> = {
   '/audit': AuditRunsPage,
 }
 
+/** Everything except the public landing page waits for the API to wake (free hosts sleep). */
+function Waking() {
+  return (
+    <WakeGate>
+      <Outlet />
+    </WakeGate>
+  )
+}
+
 function RequireAuth() {
   const token = useAuth((s) => s.token)
   return token ? <Outlet /> : <Navigate to="/login" replace />
@@ -48,8 +58,17 @@ function RequireAuth() {
 
 export default function App() {
   return (
-    <WakeGate>
-      <Routes>
+    <Routes>
+      {/* Public landing page: renders immediately and wakes the API in the background. */}
+      <Route
+        path="/"
+        element={
+          <Suspense fallback={null}>
+            <LandingPage />
+          </Suspense>
+        }
+      />
+      <Route element={<Waking />}>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<RequireAuth />}>
           {/* The briefing is a standalone printable page, outside the app chrome. */}
@@ -76,7 +95,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Route>
         </Route>
-      </Routes>
-    </WakeGate>
+      </Route>
+    </Routes>
   )
 }

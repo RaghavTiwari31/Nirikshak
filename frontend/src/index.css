@@ -143,3 +143,42 @@ body {
     --surface: #ffffff;
   }
 }
+
+/* ── Landing page motion (CSS only, so it costs nothing on the main thread) ── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes orbit {
+  to { transform: rotate(360deg); }
+}
+.animate-marquee { animation: marquee 38s linear infinite; }
+.animate-float { animation: float-y 6s ease-in-out infinite; }
+.animate-orbit { animation: orbit 90s linear infinite; }
+.animate-orbit-rev { animation: orbit 120s linear infinite reverse; }
+.marquee-pause:hover .animate-marquee { animation-play-state: paused; }
+
+/* Product tour autoplay: the bar under the active tab fills, then the next tab opens. */
+@keyframes tour-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.animate-tour-progress { animation: tour-progress 6s linear forwards; transform-origin: left; }
+
+.bg-dot-grid {
+  background-image: radial-gradient(circle at 1px 1px, rgb(31 35 40 / 0.09) 1px, transparent 0);
+  background-size: 26px 26px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-float,
+  .animate-orbit,
+  .animate-orbit-rev {
+    animation: none;
+  }
+}
