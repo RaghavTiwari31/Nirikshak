@@ -27,10 +27,8 @@ export function IngestPage() {
         checked before it is used, and you get a quality report straight away.
       </PageHeader>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <UploadWizard />
-        <ContractPanel />
-      </div>
+      <UploadWizard />
+      <ContractPanel />
       <SubmissionHistory />
     </Page>
   )

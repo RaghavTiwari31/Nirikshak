@@ -46,10 +46,11 @@ export function ContractPanel() {
       </div>
       {ds && (
         <div className="px-7 py-6">
-          <p className="mb-4 text-sm leading-relaxed text-ink-2">{ds.description}</p>
-          <ul className="divide-y divide-line/70 text-sm">
+          <p className="mb-4 max-w-3xl text-sm leading-relaxed text-ink-2">{ds.description}</p>
+          {/* Full-width card: fields flow into columns instead of one long list. */}
+          <ul className="grid gap-x-10 text-sm sm:grid-cols-2 xl:grid-cols-3">
             {ds.fields.map((f) => (
-              <li key={f.name} className="py-3.5">
+              <li key={f.name} className="border-t border-line/70 py-3.5">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-[13px] font-medium">{f.name}</span>
                   {f.required && (

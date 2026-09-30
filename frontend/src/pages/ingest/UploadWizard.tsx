@@ -98,64 +98,69 @@ export function UploadWizard() {
       <div className="px-7 pb-7">
         {step === 'configure' && (
           <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Dataset">
-                <select className={inputClass} value={dataset} onChange={(e) => setDataset(e.target.value)}>
-                  {contract.data?.map((d) => (
-                    <option key={d.key} value={d.key}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {!isProfile && (
-                <Field label="Entity">
-                  <select
-                    className={inputClass}
-                    value={entityCode}
-                    onChange={(e) => setEntityCode(e.target.value)}
-                  >
-                    <option value="">Select an entity…</option>
-                    {entities.data?.map((e) => (
-                      <option key={e.code} value={e.code}>
-                        {e.code} · {e.display_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-            </div>
-            {spec && <p className="-mt-2 text-xs text-muted">{spec.description}</p>}
+            {/* Full-width card: file details on the left, drop zone beside them on wide screens. */}
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <div className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Dataset">
+                    <select className={inputClass} value={dataset} onChange={(e) => setDataset(e.target.value)}>
+                      {contract.data?.map((d) => (
+                        <option key={d.key} value={d.key}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  {!isProfile && (
+                    <Field label="Entity">
+                      <select
+                        className={inputClass}
+                        value={entityCode}
+                        onChange={(e) => setEntityCode(e.target.value)}
+                      >
+                        <option value="">Select an entity…</option>
+                        {entities.data?.map((e) => (
+                          <option key={e.code} value={e.code}>
+                            {e.code} · {e.display_name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
+                </div>
+                {spec && <p className="-mt-2 text-xs text-muted">{spec.description}</p>}
 
-            {!isProfile && (
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Period start">
-                  <input
-                    type="date"
-                    className={inputClass}
-                    value={period.start}
-                    onChange={(e) => setPeriod((p) => ({ ...p, start: e.target.value }))}
-                  />
-                </Field>
-                <Field label="Period end">
-                  <input
-                    type="date"
-                    className={inputClass}
-                    value={period.end}
-                    onChange={(e) => setPeriod((p) => ({ ...p, end: e.target.value }))}
-                  />
-                </Field>
-                <Field label="Timestamps without offset are in">
-                  <select className={inputClass} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-                    {TIMEZONES.map((tz) => (
-                      <option key={tz}>{tz}</option>
-                    ))}
-                  </select>
-                </Field>
+                {!isProfile && (
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <Field label="Period start">
+                      <input
+                        type="date"
+                        className={inputClass}
+                        value={period.start}
+                        onChange={(e) => setPeriod((p) => ({ ...p, start: e.target.value }))}
+                      />
+                    </Field>
+                    <Field label="Period end">
+                      <input
+                        type="date"
+                        className={inputClass}
+                        value={period.end}
+                        onChange={(e) => setPeriod((p) => ({ ...p, end: e.target.value }))}
+                      />
+                    </Field>
+                    <Field label="Timestamps without offset are in">
+                      <select className={inputClass} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                        {TIMEZONES.map((tz) => (
+                          <option key={tz}>{tz}</option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                )}
               </div>
-            )}
 
-            <DropZone file={file} onFile={setFile} />
+              <DropZone file={file} onFile={setFile} />
+            </div>
 
             {preview.isError && <p className="text-sm text-sev-critical">{preview.error.message}</p>}
             <div className="flex justify-end">
